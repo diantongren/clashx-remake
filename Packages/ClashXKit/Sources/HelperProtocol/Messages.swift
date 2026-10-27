@@ -14,14 +14,17 @@ public struct CoreLaunchRequest: Codable, Sendable, Equatable {
     public var safePaths: [String]
     /// Where stdout/stderr of the core should be appended.
     public var logFilePath: String
+    /// SHA-256 the helper must observe on its own root-owned copy before executing it.
+    public var expectedSHA256: String
 
     public init(executablePath: String, workingDirectory: String, configFilePath: String,
-                safePaths: [String], logFilePath: String) {
+                safePaths: [String], logFilePath: String, expectedSHA256: String) {
         self.executablePath = executablePath
         self.workingDirectory = workingDirectory
         self.configFilePath = configFilePath
         self.safePaths = safePaths
         self.logFilePath = logFilePath
+        self.expectedSHA256 = expectedSHA256
     }
 }
 

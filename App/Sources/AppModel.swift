@@ -515,9 +515,29 @@ final class AppModel {
     }
 
     /// Downloads a remote profile into the config directory and switches to it.
+    /// Reached from `clash://install-config?url=` (any web page can trigger that), so the user
+    /// confirms source and target first and an existing profile is never replaced silently.
     func importProfile(from remoteURL: URL, name: String?) async {
-        let profileName = (name?.isEmpty == false ? name! : remoteURL.host() ?? "remote")
-            .replacingOccurrences(of: "/", with: "_")
+        guard let scheme = remoteURL.scheme?.lowercased(), ["https", "http"].contains(scheme),
+              let host = remoteURL.host(), !host.isEmpty else {
+            lastError = String(localized: "Only http(s) profile URLs can be imported.")
+            return
+        }
+        let profileName = Self.sanitizedProfileName(name) ?? host
+        let destination = paths.configFile(named: profileName)
+        let exists = FileManager.default.fileExists(atPath: destination.path)
+
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Import remote profile?")
+        alert.informativeText = exists
+            ? String(localized: "“\(profileName)” already exists and will be replaced, then become the active profile.\n\nSource: \(remoteURL.absoluteString)")
+            : String(localized: "It will be saved as “\(profileName)” and become the active profile.\n\nSource: \(remoteURL.absoluteString)")
+        alert.addButton(withTitle: exists ? String(localized: "Replace and Import") : String(localized: "Import"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        NSApp.activate()
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
         do {
             let configuration = URLSessionConfiguration.ephemeral
             configuration.connectionProxyDictionary = [:]
@@ -530,10 +550,19 @@ final class AppModel {
             guard let text = String(data: data, encoding: .utf8) else { throw MihomoError.decoding("not UTF-8") }
             _ = try ConfigComposer.compose(profileYAML: text, overrides: preferences.overrides) // validates YAML
             try paths.ensureDirectories()
-            try data.write(to: paths.configFile(named: profileName), options: .atomic)
+            try data.write(to: destination, options: .atomic)
             refreshProfiles()
             await selectProfile(profileName)
         } catch { report(error) }
+    }
+
+    /// A profile name is a single path component; anything else is rejected.
+    static func sanitizedProfileName(_ raw: String?) -> String? {
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_. "))
+        let cleaned = String(raw.unicodeScalars.filter { allowed.contains($0) })
+        guard !cleaned.isEmpty, !cleaned.hasPrefix("."), cleaned != "config" || raw == "config" else { return nil }
+        return cleaned
     }
 
     // MARK: - Streams

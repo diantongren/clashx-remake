@@ -98,6 +98,9 @@ enum WebDashboard: String, CaseIterable, Identifiable {
     }
 
     /// Hosted builds of the official dashboards, pre-filled with the local controller.
+    /// The secret only ever travels in the URL fragment (never sent to the hosting server);
+    /// yacd reads the query string instead, so it gets host and port only and the user pastes
+    /// the secret once (there is a copy button in the Web Dashboard toolbar).
     func url(port: Int, secret: String) -> URL? {
         let secretEncoded = secret.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? secret
         switch self {
@@ -106,7 +109,9 @@ enum WebDashboard: String, CaseIterable, Identifiable {
         case .metacubexd:
             return URL(string: "https://metacubex.github.io/metacubexd/#/setup?hostname=127.0.0.1&port=\(port)&secret=\(secretEncoded)")
         case .yacd:
-            return URL(string: "https://yacd.metacubex.one/?hostname=127.0.0.1&port=\(port)&secret=\(secretEncoded)")
+            return URL(string: "https://yacd.metacubex.one/?hostname=127.0.0.1&port=\(port)")
         }
     }
+
+    var needsManualSecret: Bool { self == .yacd }
 }

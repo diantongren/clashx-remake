@@ -20,13 +20,17 @@ settings:
     DEVELOPMENT_TEAM: ""
     ENABLE_HARDENED_RUNTIME: YES
     DEAD_CODE_STRIPPING: YES
-    # Code-signing requirement the helper enforces on XPC clients. Empty = bundle-id check only (dev).
+    # Code-signing requirement the helper enforces on XPC clients. With it empty the helper refuses
+    # every client unless CLASHX_ALLOW_UNVERIFIED_CLIENTS is YES (Debug only: identifier + bundle path check).
     CLASHX_CLIENT_CODE_REQUIREMENT: ""
+    CLASHX_ALLOW_UNVERIFIED_CLIENTS: "NO"
   configs:
     Debug:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      CLASHX_ALLOW_UNVERIFIED_CLIENTS: "YES"
     Release:
       SWIFT_COMPILATION_MODE: wholemodule
+      CLASHX_ALLOW_UNVERIFIED_CLIENTS: "NO"
 
 packages:
   ClashXKit:

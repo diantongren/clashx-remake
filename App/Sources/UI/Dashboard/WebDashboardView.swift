@@ -19,6 +19,13 @@ struct WebDashboardView: View {
                 ForEach(WebDashboard.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
+            if preferences.webDashboard.needsManualSecret, let runtime = model.runtime {
+                Button("Copy API Secret", systemImage: "key") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(runtime.secret, forType: .string)
+                }
+                .help("yacd does not accept the secret in the URL; paste it into its settings once.")
+            }
         }
     }
 }

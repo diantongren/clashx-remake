@@ -9,5 +9,5 @@ public enum HelperConstants {
     /// File name of the launchd plist embedded in `Contents/Library/LaunchDaemons`.
     public static let launchdPlistName = "\(machServiceName).plist"
     /// Bump this whenever the XPC protocol changes incompatibly.
-    public static let protocolVersion = 1
+    public static let protocolVersion = 2
 }

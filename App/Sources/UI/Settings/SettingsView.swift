@@ -106,7 +106,11 @@ struct CoreSettingsView: View {
                 LabeledContent("Status", value: model.helperState.title)
                 if let version = model.helperVersion {
                     LabeledContent("Helper version", value: "\(version.version) (\(version.build))")
-                    LabeledContent("Client verification", value: version.clientVerified ? "code requirement" : "bundle identifier only (development build)")
+                    LabeledContent("Client verification", value: version.clientVerified ? "code requirement" : "DEBUG build: identifier + bundle path only")
+                    if !version.clientVerified {
+                        Text("This helper accepts unverified clients. Only use Debug builds on your own machine; Release builds need CLASHX_CLIENT_CODE_REQUIREMENT.")
+                            .font(.footnote).foregroundStyle(.orange)
+                    }
                 }
                 Text("The helper is a launchd daemon registered through SMAppService. It runs the core as root so TUN mode and system proxy changes work. macOS asks you to allow it under System Settings → General → Login Items & Extensions.")
                     .font(.footnote)

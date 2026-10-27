@@ -53,7 +53,8 @@ final class CoreManager {
                                         workingDirectory: paths.configDirectory.path,
                                         configFilePath: bootstrapURL.path,
                                         safePaths: [paths.composedConfigDirectory.path, paths.configDirectory.path],
-                                        logFilePath: logFile.path)
+                                        logFilePath: logFile.path,
+                                        expectedSHA256: prepared.manifest.sha256)
         let status = try await launcher.launch(request)
 
         progress(String(localized: "Waiting for controller…"))

@@ -14,5 +14,7 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ClientCodeRequirement</key>
 	<string>$(CLASHX_CLIENT_CODE_REQUIREMENT)</string>
+	<key>AllowUnverifiedClients</key>
+	<string>$(CLASHX_ALLOW_UNVERIFIED_CLIENTS)</string>
 </dict>
 </plist>

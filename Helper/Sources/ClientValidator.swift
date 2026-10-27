@@ -3,11 +3,12 @@ import HelperProtocol
 import Security
 import os
 
-/// Decides whether an XPC peer may talk to us.
+/// Decides whether an XPC peer may talk to us. We run as root, so this is the security boundary.
 ///
-/// The requirement string comes from the helper's Info.plist (`ClientCodeRequirement`) and is
-/// filled in at build time. When it is empty (local, ad-hoc signed builds) we fall back to a
-/// bundle-identifier check and report `verified == false` so the app can tell the user.
+/// Release builds carry `ClientCodeRequirement` (injected from `CLASHX_CLIENT_CODE_REQUIREMENT`)
+/// and reject anything that does not satisfy it. When the requirement is empty the helper fails
+/// closed, unless the build explicitly set `AllowUnverifiedClients` (Debug only); even then the
+/// peer must be the main executable of the very bundle this helper was launched from.
 struct ClientValidator: Sendable {
     struct Verdict: Sendable {
         var accepted: Bool
@@ -17,14 +18,25 @@ struct ClientValidator: Sendable {
 
     private let logger = Logger(subsystem: "app.clashx.remake.helper", category: "auth")
 
-    func validate(_ connection: NSXPCConnection) -> Verdict {
-        let requirementString = (Bundle.main.infoDictionary?["ClientCodeRequirement"] as? String)?
+    private var requirementString: String {
+        (Bundle.main.infoDictionary?["ClientCodeRequirement"] as? String)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
 
+    private var allowsUnverifiedClients: Bool {
+        switch Bundle.main.infoDictionary?["AllowUnverifiedClients"] {
+        case let flag as Bool: flag
+        case let text as String: ["YES", "TRUE", "1"].contains(text.uppercased())
+        default: false
+        }
+    }
+
+    func validate(_ connection: NSXPCConnection) -> Verdict {
         guard let code = peerCode(for: connection) else {
             return Verdict(accepted: false, verified: false, reason: "cannot obtain peer code object")
         }
 
+        let requirementString = requirementString
         if !requirementString.isEmpty {
             var requirement: SecRequirement?
             guard SecRequirementCreateWithString(requirementString as CFString, [], &requirement) == errSecSuccess,
@@ -32,13 +44,20 @@ struct ClientValidator: Sendable {
                 return Verdict(accepted: false, verified: false, reason: "invalid ClientCodeRequirement")
             }
             let status = SecCodeCheckValidity(code, [], requirement)
-            if status == errSecSuccess {
-                return Verdict(accepted: true, verified: true, reason: "code requirement satisfied")
+            guard status == errSecSuccess else {
+                return Verdict(accepted: false, verified: false, reason: "code requirement failed (\(status))")
             }
-            return Verdict(accepted: false, verified: false, reason: "code requirement failed (\(status))")
+            // Also let XPC enforce it on every message, not just at accept time.
+            connection.setCodeSigningRequirement(requirementString)
+            return Verdict(accepted: true, verified: true, reason: "code requirement satisfied")
         }
 
-        // Unsigned / ad-hoc development path.
+        guard allowsUnverifiedClients else {
+            return Verdict(accepted: false, verified: false,
+                           reason: "no ClientCodeRequirement configured and unverified clients are not allowed")
+        }
+
+        // Development path: identifier must match *and* the peer must be the app that embeds this helper.
         var staticCode: SecStaticCode?
         var info: CFDictionary?
         guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode,
@@ -50,7 +69,27 @@ struct ClientValidator: Sendable {
         guard identifier == HelperConstants.appBundleIdentifier else {
             return Verdict(accepted: false, verified: false, reason: "unexpected identifier \(identifier)")
         }
-        return Verdict(accepted: true, verified: false, reason: "identifier match only; set ClientCodeRequirement for release builds")
+        guard let peerPath = executablePath(of: connection.processIdentifier),
+              peerPath == Self.embeddingAppExecutable else {
+            return Verdict(accepted: false, verified: false,
+                           reason: "peer is not the embedding app (\(executablePath(of: connection.processIdentifier) ?? "?"))")
+        }
+        return Verdict(accepted: true, verified: false, reason: "DEBUG: identifier + bundle path match only")
+    }
+
+    /// `<App>.app/Contents/MacOS/<App>` for the bundle that contains this helper binary.
+    private static let embeddingAppExecutable: String? = {
+        let helper = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
+        let bundle = helper.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        guard bundle.pathExtension == "app",
+              let executable = Bundle(url: bundle)?.executableURL?.standardizedFileURL else { return nil }
+        return executable.path
+    }()
+
+    private func executablePath(of pid: pid_t) -> String? {
+        var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN) * 4)
+        guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else { return nil }
+        return URL(fileURLWithPath: String(cString: buffer)).standardizedFileURL.path
     }
 
     private func peerCode(for connection: NSXPCConnection) -> SecCode? {
