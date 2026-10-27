@@ -1,0 +1,9 @@
+{
+  "name": "mihomo",
+  "version": "v1.19.33",
+  "archs": ["arm64", "x86_64"],
+  "archive": "mihomo.gz",
+  "sha256": "24dbfcd58441afb69dbbc7311f4c2fa141ed583cf930cfef0710f0d1e6bcdc8e",
+  "size": 117709362,
+  "source": "https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.33"
+}

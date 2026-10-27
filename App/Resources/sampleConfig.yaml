@@ -1,0 +1,21 @@
+# ClashX Remake default profile.
+# Profiles live in ~/.config/clash.meta/*.yaml and are selected from the menu.
+# Ports, external-controller and secret are managed by the app; mode/log-level/tun/sniffer
+# are overridden from the menu. Everything else here is yours.
+#
+# Docs: https://wiki.metacubex.one/
+
+mode: rule
+log-level: info
+ipv6: false
+mixed-port: 7890
+
+proxies: []
+
+proxy-groups: []
+
+rules:
+  - DOMAIN-SUFFIX,local,DIRECT
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - MATCH,DIRECT

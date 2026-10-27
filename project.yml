@@ -1,0 +1,131 @@
+name: ClashXRemake
+options:
+  bundleIdPrefix: app.clashx
+  deploymentTarget:
+    macOS: "15.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+    CODE_SIGN_STYLE: Automatic
+    # Set your team here (or via `xcodebuild DEVELOPMENT_TEAM=XXXX`) to get SMAppService working on other Macs.
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+    # Code-signing requirement the helper enforces on XPC clients. Empty = bundle-id check only (dev).
+    CLASHX_CLIENT_CODE_REQUIREMENT: ""
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+    Release:
+      SWIFT_COMPILATION_MODE: wholemodule
+
+packages:
+  ClashXKit:
+    path: Packages/ClashXKit
+
+targets:
+  ClashXRemake:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+        excludes:
+          - "Core/**"
+          - "Info.plist"
+      - path: App/Resources/Core
+        type: folder
+        buildPhase: resources
+      - path: Helper/app.clashx.remake.helper.plist
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchDaemons
+    dependencies:
+      - package: ClashXKit
+        product: MihomoAPI
+      - package: ClashXKit
+        product: ConfigKit
+      - package: ClashXKit
+        product: HelperProtocol
+      - target: app.clashx.remake.helper
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
+    info:
+      path: App/Resources/Info.plist
+      properties:
+        CFBundleName: ClashX Remake
+        CFBundleDisplayName: ClashX Remake
+        CFBundleIconName: AppIcon
+        LSUIElement: true
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: "Not affiliated with MetaCubeX."
+        NSSupportsAutomaticTermination: false
+        NSSupportsSuddenTermination: false
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: app.clashx.remake.url
+            CFBundleURLSchemes: [clash, clashx]
+        CFBundleDocumentTypes:
+          - CFBundleTypeExtensions: [yaml, yml]
+            CFBundleTypeName: YAML
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: None
+    entitlements:
+      path: App/Resources/ClashXRemake.entitlements
+      properties: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.clashx.remake
+        PRODUCT_NAME: ClashX Remake
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: YES
+        COMBINE_HIDPI_IMAGES: YES
+        OTHER_LDFLAGS: ["$(inherited)", "-ObjC"]
+        STRING_CATALOG_GENERATE_SYMBOLS: NO
+
+  app.clashx.remake.helper:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Helper/Sources
+    dependencies:
+      - package: ClashXKit
+        product: HelperProtocol
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.clashx.remake.helper
+        PRODUCT_NAME: app.clashx.remake.helper
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        INFOPLIST_FILE: Helper/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+
+schemes:
+  ClashXRemake:
+    build:
+      targets:
+        ClashXRemake: all
+    run:
+      config: Debug
+      environmentVariables:
+        - variable: CLASHX_CONFIG_DIR
+          value: ""
+          isEnabled: false
+    archive:
+      config: Release

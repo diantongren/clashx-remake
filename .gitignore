@@ -1,0 +1,13 @@
+.DS_Store
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+DerivedData/
+build/
+.build/
+.swiftpm/
+*.xcarchive
+# the core is fetched by scripts/fetch-core.sh; keep the manifest, not the 40 MB blob
+App/Resources/Core/mihomo.gz
+App/Resources/Core/*.dat.gz
+App/Resources/Core/*.mmdb.gz
+.remember/
